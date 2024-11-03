@@ -15,7 +15,7 @@ app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['MAX_CONTENT_LENGTH'] = 1000000  # Max file size (in bytes)
 
 # Set a timeout period (1 minute for testing)
-SESSION_TIMEOUT = timedelta(minutes=1)
+SESSION_TIMEOUT = timedelta(minutes=5)
 
 # Email configuration
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -71,7 +71,7 @@ def login():
 
             # Send OTP via Email
             msg = Message('Your OTP Code', sender='anubhavezhuthassan23@gnu.ac.in', recipients=[users[username]['email']])
-            msg.body = f'Your OTP code is {otp_code}'
+            msg.body = f'Hey buddy! You got an OTP code which is {otp_code}'
             mail.send(msg)
 
             # Set the login timestamp
@@ -79,7 +79,7 @@ def login():
             # session['login_time'] = datetime.now()
             return redirect(url_for('verify_otp'))
         else:
-            flash('Invalid username or password')
+            alert('Invalid username or password')
     return render_template('login.html')
 
 # OTP Verification
@@ -101,8 +101,9 @@ def signup():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    username = session.get('username')
     files = os.listdir(app.config['UPLOAD_FOLDER'])
-    return render_template('dashboard.html', files=files)
+    return render_template('dashboard.html', username=username, files=files)
 
 # File upload
 @app.route('/upload', methods=['GET', 'POST'])

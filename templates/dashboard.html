@@ -4,36 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <style>
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        /* Container */
         body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f4f4f4; /* Light background */
-            color: #333; /* Dark text color */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
+            background-color: #f8f9fa;
         }
 
         .container {
-            max-width: 900px;
-            width: 100%;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            background-color: white; /* White background for the container */
+            margin-top: 50px;
         }
 
-        /* Header with Dashboard Title and Logout Button */
         .header {
             display: flex;
             justify-content: space-between;
@@ -41,114 +21,81 @@
             margin-bottom: 20px;
         }
 
-        /* Dashboard Title */
         .dashboard-title {
             font-size: 24px;
-            color: #007bff;
-            margin: 0;
+            font-weight: bold;
         }
 
-        /* User Info */
-        .user-info {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
+        .logout-button, .home-button {
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background-color 0.3s;
         }
 
-        .avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: #007bff; /* Avatar background color */
-            display: inline-block;
-            text-align: center;
-            line-height: 40px; /* Center text vertically */
-            color: white;
-            font-size: 18px;
-            margin-right: 10px;
-        }
-
-        /* Logout Button */
         .logout-button {
             background-color: #dc3545;
             color: white;
-            padding: 8px 16px;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 16px;
-            transition: background-color 0.3s;
         }
 
         .logout-button:hover {
             background-color: #c82333;
         }
 
-        /* Upload Button */
-        .upload-button {
-            display: block;
-            width: 100%;
-            max-width: 150px;
-            margin: 0 auto 20px;
-            padding: 10px 20px;
-            background-color: #007bff;
+        .home-button {
+            background-color: green;
             color: white;
-            text-align: center;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 16px;
-            font-weight: bold;
-            transition: background-color 0.3s;
+            margin-right: 10px;
         }
 
-        .upload-button:hover {
+        .home-button:hover {
             background-color: #0056b3;
         }
 
-        /* File List Styling */
-        .file-list {
-            list-style-type: none;
-            padding: 0;
-            text-align: center;
-        }
-
-        .file-item {
-            margin: 10px 0;
-        }
-
         .file-link {
-            color: #333;
+            color: #007bff;
             text-decoration: none;
-            font-size: 18px;
             transition: color 0.3s;
         }
 
         .file-link:hover {
-            color: #007bff;
+            color: #0056b3;
         }
-
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h2 class="dashboard-title">Dashboard</h2>
-            <a href="{{ url_for('logout') }}" class="logout-button">Logout</a>
-        </div>
-        
-        <div class="user-info">
-            <div class="avatar">A</div> <!-- Placeholder for the avatar -->
-            <div>Username</div> <!-- Display the username -->
+            <div>
+                <a href="{{ url_for('index') }}" class="btn home-button">Home</a>
+                <a href="{{ url_for('logout') }}" class="btn logout-button">Logout</a>
+            </div>
         </div>
 
-        <a href="{{ url_for('upload_file') }}" class="upload-button">Upload File</a>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Welcome, Buddy!!!</h5>
+                <p class="card-text">Here's a quick overview of your dashboard.</p>
+                <a href="{{ url_for('upload_file') }}" class="btn btn-primary">Upload File</a>
+            </div>
+        </div>
 
-        <ul class="file-list">
-            {% for file in files %}
-                <li class="file-item">
-                    <a href="{{ url_for('download_file', filename=file) }}" class="file-link">{{ file }}</a>
-                </li>
-            {% endfor %}
-        </ul>
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header">
+                Your Uploaded Files
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    {% for file in files %}
+                        <li class="file-item mb-2">
+                            <a href="{{ url_for('download_file', filename=file) }}" class="file-link">{{ file }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
