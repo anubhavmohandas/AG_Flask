@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to AuthGuard</title>
+    <style>
+        /* Body and Container Styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom right, #f0f8ff, #e6e6fa);
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            position: relative;
+        }
+
+        .main-container {
+            text-align: center;
+        }
+
+        /* Top Right Button Styling */
+        .top-right {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            font-size: 1em;
+            font-weight: bold;
+            color: #fff;
+            border: none;
+            border-radius: 25px;
+            text-align: center;
+            text-decoration: none;
+            transition: transform 0.3s ease, background-color 0.3s ease;
+            cursor: pointer;
+        }
+
+        /* Login Button */
+        .login-button {
+            background-color: #ff6347;
+        }
+
+        .login-button:hover {
+            background-color: #e55340;
+            transform: scale(1.1);
+        }
+
+        /* Signup Button */
+        .signup-button {
+            background-color: #32cd32;
+        }
+
+        .signup-button:hover {
+            background-color: #28a428;
+            transform: scale(1.1);
+        }
+
+        /* Animated Title Styling */
+        .animated-title {
+            font-size: 2.5em;
+            margin: 0;
+            animation: fadeIn 2s ease-in-out;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            margin-top: 10px;
+        }
+
+        /* Button Group Styling */
+        .button-group {
+            margin-top: 20px;
+        }
+
+        /* Keyframe for animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- <div class="top-right">
+            <a href="{{ url_for('login') }}" class="button login-button">Login</a>
+        </div> -->
+        <div class="content">
+            <h1 class="animated-title">Welcome to AuthGuard</h1>
+            <p class="subtitle">Your Secure Portal for Seamless Authentication</p>
+            <div class="button-group">
+                <a href="{{ url_for('login') }}" class="button login-button">Login</a>
+                <!-- <a href="{{ url_for('signup') }}" class="button signup-button">Sign Up</a> -->
+            </div>
+        </div>
+    </div>
+</body>
+</html>

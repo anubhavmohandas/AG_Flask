@@ -1,9 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from datetime import datetime, timedelta
-
 import pyotp
 import os
+import pytz
 from werkzeug.utils import secure_filename
 from flask_mail import Mail, Message
 
@@ -14,7 +14,7 @@ login_manager.login_view = 'login'
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['MAX_CONTENT_LENGTH'] = 1000000  # Max file size (in bytes)
 
-# Set a timeout period (5 minutes in seconds)
+# Set a timeout period (1 minute for testing)
 SESSION_TIMEOUT = timedelta(minutes=1)
 
 # Email configuration
@@ -32,8 +32,8 @@ login_manager.login_view = 'login'
 
 # In-memory user storage (for simplicity, replace with a database later)
 users = {
-    'testuser': {
-        'password': 'testpass',
+    'test': {
+        'password': 'test',
         'email': 'anubhavezhuthassan23@gnu.ac.in'
     }
 }
@@ -52,9 +52,8 @@ def load_user(username):
 # Routes
 
 @app.route('/')
-def home():
-    return redirect(url_for('login'))
-    
+def index():
+    return render_template('index.html')
 
 # Login page
 @app.route('/login', methods=['GET', 'POST'])
@@ -75,14 +74,13 @@ def login():
             msg.body = f'Your OTP code is {otp_code}'
             mail.send(msg)
 
+            # Set the login timestamp
+            session['login_time'] = datetime.now(pytz.utc)
+            # session['login_time'] = datetime.now()
             return redirect(url_for('verify_otp'))
         else:
             flash('Invalid username or password')
     return render_template('login.html')
-
-    # After a successful login, set the login timestamp
-    session['login_time'] = datetime.now()
-    return redirect(url_for('dashboard'))
 
 # OTP Verification
 @app.route('/verify_otp', methods=['GET', 'POST'])
@@ -94,6 +92,10 @@ def verify_otp():
         else:
             flash('Invalid OTP')
     return render_template('verify_otp.html')
+
+@app.route('/signup')
+def signup():
+    return render_template('signup.html')
 
 # Dashboard for file upload/download
 @app.route('/dashboard')
@@ -124,10 +126,17 @@ def download_file(filename):
 # Check session timeout on each request
 @app.before_request
 def check_session_timeout():
-    # If the user is logged in and the login_time is set
     if 'login_time' in session:
-        elapsed_time = datetime.now() - session['login_time']
-        # If the elapsed time is greater than the SESSION_TIMEOUT, log out the user
+        # Get the current time in UTC
+        current_time = datetime.now(pytz.utc)  # Use UTC
+        login_time = session['login_time']  # This is naive, convert it to UTC
+
+        # Convert login_time to UTC
+        if isinstance(login_time, datetime):
+            login_time = login_time.replace(tzinfo=pytz.utc)  # Make login_time UTC aware
+
+        elapsed_time = current_time - login_time
+        print(f"Elapsed time: {elapsed_time.total_seconds()} seconds")  # Debugging statement
         if elapsed_time > SESSION_TIMEOUT:
             session.pop('login_time', None)
             logout_user()
@@ -139,8 +148,7 @@ def check_session_timeout():
 @login_required
 def logout():
     logout_user()
-    # session.pop('otp', None)
-    session.pop('login_time', None) # Clear the login time from session
+    session.pop('login_time', None)  # Clear the login time from session
     flash("You have been logged out.", "info")
     return redirect(url_for('login'))
 

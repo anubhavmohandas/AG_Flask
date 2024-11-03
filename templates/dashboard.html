@@ -1,102 +1,154 @@
-<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-<style>
-    /* Container */
-    .container {
-        max-width: 600px;
-        margin: 0 auto;
-        padding: 20px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-    }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
 
-    /* Header with Dashboard Title and Logout Button */
-    .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-    }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    /* Dashboard Title */
-    .dashboard-title {
-        font-size: 24px;
-        color: #007bff;
-        margin: 0;
-    }
+        /* Container */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4; /* Light background */
+            color: #333; /* Dark text color */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
 
-    /* Logout Button */
-    .logout-button {
-        background-color: #dc3545;
-        color: white;
-        padding: 8px 16px;
-        text-decoration: none;
-        border-radius: 4px;
-        font-size: 16px;
-        transition: background-color 0.3s;
-    }
+        .container {
+            max-width: 900px;
+            width: 100%;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            background-color: white; /* White background for the container */
+        }
 
-    .logout-button:hover {
-        background-color: #c82333;
-    }
+        /* Header with Dashboard Title and Logout Button */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
 
-    /* Upload Button */
-    .upload-button {
-        display: block;
-        width: 100%;
-        max-width: 150px;
-        margin: 0 auto 20px;
-        padding: 10px 20px;
-        background-color: #007bff;
-        color: white;
-        text-align: center;
-        text-decoration: none;
-        border-radius: 4px;
-        font-size: 16px;
-        font-weight: bold;
-        transition: background-color 0.3s;
-    }
+        /* Dashboard Title */
+        .dashboard-title {
+            font-size: 24px;
+            color: #007bff;
+            margin: 0;
+        }
 
-    .upload-button:hover {
-        background-color: #0056b3;
-    }
+        /* User Info */
+        .user-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
 
-    /* File List Styling */
-    .file-list {
-        list-style-type: none;
-        padding: 0;
-        text-align: center;
-    }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #007bff; /* Avatar background color */
+            display: inline-block;
+            text-align: center;
+            line-height: 40px; /* Center text vertically */
+            color: white;
+            font-size: 18px;
+            margin-right: 10px;
+        }
 
-    .file-item {
-        margin: 10px 0;
-    }
+        /* Logout Button */
+        .logout-button {
+            background-color: #dc3545;
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
 
-    .file-link {
-        color: #333;
-        text-decoration: none;
-        font-size: 18px;
-        transition: color 0.3s;
-    }
+        .logout-button:hover {
+            background-color: #c82333;
+        }
 
-    .file-link:hover {
-        color: #007bff;
-    }
+        /* Upload Button */
+        .upload-button {
+            display: block;
+            width: 100%;
+            max-width: 150px;
+            margin: 0 auto 20px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
 
-</style>
+        .upload-button:hover {
+            background-color: #0056b3;
+        }
 
-<div class="container">
-    <div class="header">
-        <h2 class="dashboard-title">Dashboard</h2>
-        <a href="{{ url_for('logout') }}" class="logout-button">Logout</a>
+        /* File List Styling */
+        .file-list {
+            list-style-type: none;
+            padding: 0;
+            text-align: center;
+        }
+
+        .file-item {
+            margin: 10px 0;
+        }
+
+        .file-link {
+            color: #333;
+            text-decoration: none;
+            font-size: 18px;
+            transition: color 0.3s;
+        }
+
+        .file-link:hover {
+            color: #007bff;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2 class="dashboard-title">Dashboard</h2>
+            <a href="{{ url_for('logout') }}" class="logout-button">Logout</a>
+        </div>
+        
+        <div class="user-info">
+            <div class="avatar">A</div> <!-- Placeholder for the avatar -->
+            <div>Username</div> <!-- Display the username -->
+        </div>
+
+        <a href="{{ url_for('upload_file') }}" class="upload-button">Upload File</a>
+
+        <ul class="file-list">
+            {% for file in files %}
+                <li class="file-item">
+                    <a href="{{ url_for('download_file', filename=file) }}" class="file-link">{{ file }}</a>
+                </li>
+            {% endfor %}
+        </ul>
     </div>
-    <a href="{{ url_for('upload_file') }}" class="upload-button">Upload File</a>
-
-    <ul class="file-list">
-        {% for file in files %}
-            <li class="file-item">
-                <a href="{{ url_for('download_file', filename=file) }}" class="file-link">{{ file }}</a>
-            </li>
-        {% endfor %}
-    </ul>
-</div>
+</body>
+</html>
