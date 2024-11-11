@@ -7,15 +7,21 @@ import pytz
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
+from flask_sqlalchemy import SQLAlchemy  # FOR DATABASE
 
 app = Flask(__name__)
 app.secret_key = 'my_secret_key'
-login_manager = LoginManager(app)
+
+# Setup Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+# File upload configurations
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['MAX_CONTENT_LENGTH'] = 1000000
 
-# Set a timeout period (5 minutes for testing)
+# Set a timeout period (15 minutes for session timeout)
 SESSION_TIMEOUT = timedelta(minutes=15)
 
 # Email configuration
@@ -26,34 +32,23 @@ app.config['MAIL_USERNAME'] = 'anubhavezhuthassan23@gnu.ac.in'
 app.config['MAIL_PASSWORD'] = 'Anubhav@Guni$013.748'
 mail = Mail(app)
 
-# Setup Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
+# DATABASE Configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///authguard.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# In-memory user storage (for simplicity, replace with a database later)
-users = {
-    'test': {
-        'password': generate_password_hash('test'),
-        'email': 'anubhavezhuthassan23@gnu.ac.in'
-    },
-    # 'anubhav': {
-    #     'password': 'anubhav',
-    #     'email': 'anubhav.manav147@gmail.com'
-    # }
-}
+db = SQLAlchemy(app)
 
+# User class for Flask-Login and database
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
 
-# User class for Flask-Login
-class User(UserMixin):
-    def __init__(self, username):
-        self.id = username
-
+# User loader for Flask-Login
 @login_manager.user_loader
 def load_user(username):
-    if username in users:
-        return User(username)
-    return None
+    return User.query.get(username)
 
 # Routes
 
@@ -67,21 +62,23 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        # if username in users and users[username]['password'] == password:
-        if username in users and check_password_hash(users[username]['password'], password):
-            user = User(username)
+        
+         # Fetch user from the database
+        user = User.query.filter_by(username=username).first()
+        if user and check_password_hash(user.password, password):
             login_user(user)
 
             # Generate and send OTP
-            otp_secret = pyotp.random_base32()  # Unique OTP secret for added security
+            otp_secret = pyotp.random_base32()
             otp = pyotp.TOTP(otp_secret)
             otp_code = otp.now()
-            session['otp'] = otp_code  # Store OTP
-            session['otp_secret'] = otp_secret  # Store OTP secret
-            session['username'] = username  # Store username
+            # Store everything OTP and username
+            session['otp'] = otp_code
+            session['otp_secret'] = otp_secret
+            session['username'] = username
 
             # Send OTP via Email
-            msg = Message('Your OTP Code', sender='anubhavezhuthassan23@gnu.ac.in', recipients=[users[username]['email']])
+            msg = Message('Your OTP Code', sender='anubhavezhuthassan23@gnu.ac.in', recipients=[user.email])
             msg.body = f'Hey buddy! You got an OTP code which is {otp_code}'
             mail.send(msg)
 
@@ -91,6 +88,7 @@ def login():
         else:
             flash('Invalid username or password', 'danger')
     return render_template('login.html')
+
 # Signup route
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -99,26 +97,27 @@ def signup():
         password = request.form['password']
         email = request.form['email']
 
-        # Check if the user already exists
-        if username in users:
+        # Check if the user already exists in the database
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
             flash('Username already exists, please choose another one.', 'warning')
             return redirect(url_for('signup'))
 
         # Hash the password
         hashed_password = generate_password_hash(password)
 
-        # Add the new user to the users dictionary
-        users[username] = {
-            'password': hashed_password,
-            'email': email
-        }
+        # Create a new user and add to the database
+        new_user = User(username=username, password=hashed_password, email=email)
+        db.session.add(new_user)
+        db.session.commit()
 
         flash('Signup successful! You can now log in.', 'success')
         return redirect(url_for('login'))
 
     return render_template('signup.html')
 
-# File upload with error handling
+# File upload route to associate files with users
+
 @app.route('/upload', methods=['GET', 'POST'])
 @login_required
 def upload_file():
@@ -133,6 +132,12 @@ def upload_file():
         if file:
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            
+            # Save file to database
+            new_file = File(filename=filename, user_id=current_user.id)
+            db.session.add(new_file)
+            db.session.commit()
+            
             flash('File uploaded successfully', 'success')
             return redirect(url_for('dashboard'))
     return render_template('upload.html')
@@ -149,10 +154,6 @@ def verify_otp():
         else:
             flash('Invalid OTP', 'danger')
     return render_template('verify_otp.html')
-
-# @app.route('/signup')
-# def signup():
-#     return render_template('signup.html')
 
 # Dashboard for file upload/download
 @app.route('/dashboard')
