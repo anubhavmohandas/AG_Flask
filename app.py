@@ -7,7 +7,10 @@ import pytz
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
-from flask_sqlalchemy import SQLAlchemy  # FOR DATABASE
+# FOR DATABASE
+from flask_sqlalchemy import SQLAlchemy 
+from authguard import create_app, db
+from authguard.models import User
 
 app = Flask(__name__)
 app.secret_key = 'my_secret_key'
@@ -90,8 +93,36 @@ def login():
     return render_template('login.html')
 
 # Signup route
+
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        
+        # Check if the username already exists
+        user_by_username = User.query.filter_by(username=username).first()
+        if user_by_username:
+            flash('Username is already taken. Please choose a different one.', 'error')
+            return redirect(url_for('signup'))
+
+        # Check if the email already exists
+        user_by_email = User.query.filter_by(email=email).first()
+        if user_by_email:
+            flash('Email is already registered. Please use a different email.', 'error')
+            return redirect(url_for('signup'))
+        
+        # If username and email are unique, create the new user
+        new_user = User(username=username, email=email, password=hash_password(password))  # hash_password is your password hashing function
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash('You have successfully signed up! Please login.', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('signup.html')
+
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -115,6 +146,15 @@ def signup():
         return redirect(url_for('login'))
 
     return render_template('signup.html')
+
+class File(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(120), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    user = db.relationship('User', back_populates='files')
+
+User.files = db.relationship('File', back_populates='user')
 
 # File upload route to associate files with users
 
