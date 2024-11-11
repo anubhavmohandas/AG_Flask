@@ -7,11 +7,11 @@ import pytz
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
-# FOR DATABASE
-from flask_sqlalchemy import SQLAlchemy 
-from authguard import create_app, db
-from authguard.models import User
+from flask_sqlalchemy import SQLAlchemy
+from db import db  # Import db from db.py
+from authguard_app.models import User  # Import User from models
 
+# Initialize the Flask app
 app = Flask(__name__)
 app.secret_key = 'my_secret_key'
 
@@ -19,10 +19,6 @@ app.secret_key = 'my_secret_key'
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-
-# File upload configurations
-app.config['UPLOAD_FOLDER'] = 'uploads/'
-app.config['MAX_CONTENT_LENGTH'] = 1000000
 
 # Set a timeout period (15 minutes for session timeout)
 SESSION_TIMEOUT = timedelta(minutes=15)
@@ -35,26 +31,37 @@ app.config['MAIL_USERNAME'] = 'anubhavezhuthassan23@gnu.ac.in'
 app.config['MAIL_PASSWORD'] = 'Anubhav@Guni$013.748'
 mail = Mail(app)
 
+# File upload configurations
+app.config['UPLOAD_FOLDER'] = 'uploads/'
+app.config['MAX_CONTENT_LENGTH'] = 1000000
+
 # DATABASE Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///authguard.db'
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/authguard.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.instance_path, 'authguard.db')
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)  # Initialize db with the app
 
-db = SQLAlchemy(app)
-
-# User class for Flask-Login and database
-class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+# Import models (User, etc.)
+from authguard_app.models import User
 
 # User loader for Flask-Login
 @login_manager.user_loader
-def load_user(username):
-    return User.query.get(username)
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# File model for file uploads
+class File(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(120), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', back_populates='files')
+
+User.files = db.relationship('File', back_populates='user')
 
 # Routes
 
+# Index page
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -66,7 +73,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
         
-         # Fetch user from the database
+        # Fetch user from the database
         user = User.query.filter_by(username=username).first()
         if user and check_password_hash(user.password, password):
             login_user(user)
@@ -75,14 +82,17 @@ def login():
             otp_secret = pyotp.random_base32()
             otp = pyotp.TOTP(otp_secret)
             otp_code = otp.now()
-            # Store everything OTP and username
+
+            # Store OTP secret in database and session
+            user.otp_secret = otp_secret
+            db.session.commit()
+
             session['otp'] = otp_code
-            session['otp_secret'] = otp_secret
             session['username'] = username
 
             # Send OTP via Email
-            msg = Message('Your OTP Code', sender='anubhavezhuthassan23@gnu.ac.in', recipients=[user.email])
-            msg.body = f'Hey buddy! You got an OTP code which is {otp_code}'
+            msg = Message('Your OTP Code', sender='your-email@example.com', recipients=[user.email])
+            msg.body = f'Your OTP code is: {otp_code}'
             mail.send(msg)
 
             # Set the login timestamp
@@ -93,7 +103,6 @@ def login():
     return render_template('login.html')
 
 # Signup route
-
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
@@ -114,7 +123,8 @@ def signup():
             return redirect(url_for('signup'))
         
         # If username and email are unique, create the new user
-        new_user = User(username=username, email=email, password=hash_password(password))  # hash_password is your password hashing function
+        hashed_password = generate_password_hash(password)
+        new_user = User(username=username, email=email, password=hashed_password)  
         db.session.add(new_user)
         db.session.commit()
         
@@ -123,41 +133,7 @@ def signup():
     
     return render_template('signup.html')
 
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        email = request.form['email']
-
-        # Check if the user already exists in the database
-        existing_user = User.query.filter_by(username=username).first()
-        if existing_user:
-            flash('Username already exists, please choose another one.', 'warning')
-            return redirect(url_for('signup'))
-
-        # Hash the password
-        hashed_password = generate_password_hash(password)
-
-        # Create a new user and add to the database
-        new_user = User(username=username, password=hashed_password, email=email)
-        db.session.add(new_user)
-        db.session.commit()
-
-        flash('Signup successful! You can now log in.', 'success')
-        return redirect(url_for('login'))
-
-    return render_template('signup.html')
-
-class File(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    filename = db.Column(db.String(120), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-
-    user = db.relationship('User', back_populates='files')
-
-User.files = db.relationship('File', back_populates='user')
-
-# File upload route to associate files with users
-
+# File upload route
 @app.route('/upload', methods=['GET', 'POST'])
 @login_required
 def upload_file():
@@ -172,12 +148,12 @@ def upload_file():
         if file:
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            
+
             # Save file to database
             new_file = File(filename=filename, user_id=current_user.id)
             db.session.add(new_file)
             db.session.commit()
-            
+
             flash('File uploaded successfully', 'success')
             return redirect(url_for('dashboard'))
     return render_template('upload.html')
@@ -187,15 +163,17 @@ def upload_file():
 def verify_otp():
     if request.method == 'POST':
         otp_input = request.form['otp']
-        # Retrieve stored OTP and secret
         otp_code = session.get('otp')
+        
         if otp_input == otp_code:
+            # Clear OTP from session after verification
+            session.pop('otp', None)
             return redirect(url_for('dashboard'))
         else:
             flash('Invalid OTP', 'danger')
     return render_template('verify_otp.html')
 
-# Dashboard for file upload/download
+# Dashboard
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -213,7 +191,6 @@ def download_file(filename):
 @app.before_request
 def check_session_timeout():
     if 'login_time' in session:
-        # Get the current time in UTC
         current_time = datetime.now(pytz.utc)
         login_time = session['login_time']
         elapsed_time = current_time - login_time
@@ -232,7 +209,10 @@ def logout():
     flash("You have been logged out.", "info")
     return redirect(url_for('login'))
 
+# Create uploads folder if not exists
+if not os.path.exists('uploads'):
+    os.makedirs('uploads')
+
+# Run the app
 if __name__ == '__main__':
-    if not os.path.exists('uploads'):
-        os.makedirs('uploads')
     app.run(debug=True)
