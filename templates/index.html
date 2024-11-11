@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome to AuthGuard</title>
     <style>
-        /* Body and Container Styling */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -16,20 +15,14 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            position: relative;
         }
 
         .main-container {
             text-align: center;
+            padding: 20px;
         }
 
-        /* Top Right Button Styling */
-        .top-right {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-        }
-
+        /* Button Styling */
         .button {
             display: inline-block;
             padding: 12px 24px;
@@ -90,13 +83,27 @@
                 opacity: 1;
             }
         }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .animated-title {
+                font-size: 2em;
+            }
+
+            .subtitle {
+                font-size: 1em;
+                margin-top: 5px;
+            }
+
+            .button {
+                padding: 10px 20px;
+                font-size: 0.9em;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="main-container">
-        <!-- <div class="top-right">
-            <a href="{{ url_for('login') }}" class="button login-button">Login</a>
-        </div> -->
         <div class="content">
             <h1 class="animated-title">Welcome to AuthGuard</h1>
             <p class="subtitle">Your Secure Portal for Seamless Authentication</p>

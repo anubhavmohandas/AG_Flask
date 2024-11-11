@@ -12,10 +12,10 @@ app.secret_key = 'my_secret_key'
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 app.config['UPLOAD_FOLDER'] = 'uploads/'
-app.config['MAX_CONTENT_LENGTH'] = 1000000  # Max file size (in bytes)
+app.config['MAX_CONTENT_LENGTH'] = 1000000
 
-# Set a timeout period (1 minute for testing)
-SESSION_TIMEOUT = timedelta(minutes=5)
+# Set a timeout period (5 minutes for testing)
+SESSION_TIMEOUT = timedelta(minutes=15)
 
 # Email configuration
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -35,8 +35,13 @@ users = {
     'test': {
         'password': 'test',
         'email': 'anubhavezhuthassan23@gnu.ac.in'
+    },
+    'anubhav': {
+        'password': 'anubhav',
+        'email': 'anubhav.manav147@gmail.com'
     }
 }
+
 
 # User class for Flask-Login
 class User(UserMixin):
@@ -64,10 +69,14 @@ def login():
         if username in users and users[username]['password'] == password:
             user = User(username)
             login_user(user)
+
             # Generate and send OTP
-            otp = pyotp.TOTP('base32secret3232')
+            otp_secret = pyotp.random_base32()  # Unique OTP secret for added security
+            otp = pyotp.TOTP(otp_secret)
             otp_code = otp.now()
             session['otp'] = otp_code  # Store OTP
+            session['otp_secret'] = otp_secret  # Store OTP secret
+            session['username'] = username  # Store username
 
             # Send OTP via Email
             msg = Message('Your OTP Code', sender='anubhavezhuthassan23@gnu.ac.in', recipients=[users[username]['email']])
@@ -76,21 +85,41 @@ def login():
 
             # Set the login timestamp
             session['login_time'] = datetime.now(pytz.utc)
-            # session['login_time'] = datetime.now()
             return redirect(url_for('verify_otp'))
         else:
-            alert('Invalid username or password')
+            flash('Invalid username or password', 'danger')
     return render_template('login.html')
+
+# File upload with error handling
+@app.route('/upload', methods=['GET', 'POST'])
+@login_required
+def upload_file():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('No file part', 'warning')
+            return redirect(request.url)
+        file = request.files['file']
+        if file.filename == '':
+            flash('No selected file', 'warning')
+            return redirect(request.url)
+        if file:
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            flash('File uploaded successfully', 'success')
+            return redirect(url_for('dashboard'))
+    return render_template('upload.html')
 
 # OTP Verification
 @app.route('/verify_otp', methods=['GET', 'POST'])
 def verify_otp():
     if request.method == 'POST':
         otp_input = request.form['otp']
-        if otp_input == session.get('otp'):
+        # Retrieve stored OTP and secret
+        otp_code = session.get('otp')
+        if otp_input == otp_code:
             return redirect(url_for('dashboard'))
         else:
-            flash('Invalid OTP')
+            flash('Invalid OTP', 'danger')
     return render_template('verify_otp.html')
 
 @app.route('/signup')
@@ -105,19 +134,6 @@ def dashboard():
     files = os.listdir(app.config['UPLOAD_FOLDER'])
     return render_template('dashboard.html', username=username, files=files)
 
-# File upload
-@app.route('/upload', methods=['GET', 'POST'])
-@login_required
-def upload_file():
-    if request.method == 'POST':
-        file = request.files['file']
-        if file:
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            flash('File uploaded successfully')
-            return redirect(url_for('dashboard'))
-    return render_template('upload.html')
-
 # File download
 @app.route('/download/<filename>')
 @login_required
@@ -129,15 +145,9 @@ def download_file(filename):
 def check_session_timeout():
     if 'login_time' in session:
         # Get the current time in UTC
-        current_time = datetime.now(pytz.utc)  # Use UTC
-        login_time = session['login_time']  # This is naive, convert it to UTC
-
-        # Convert login_time to UTC
-        if isinstance(login_time, datetime):
-            login_time = login_time.replace(tzinfo=pytz.utc)  # Make login_time UTC aware
-
+        current_time = datetime.now(pytz.utc)
+        login_time = session['login_time']
         elapsed_time = current_time - login_time
-        print(f"Elapsed time: {elapsed_time.total_seconds()} seconds")  # Debugging statement
         if elapsed_time > SESSION_TIMEOUT:
             session.pop('login_time', None)
             logout_user()
@@ -149,7 +159,7 @@ def check_session_timeout():
 @login_required
 def logout():
     logout_user()
-    session.pop('login_time', None)  # Clear the login time from session
+    session.pop('login_time', None)
     flash("You have been logged out.", "info")
     return redirect(url_for('login'))
 
