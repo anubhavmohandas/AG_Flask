@@ -5,6 +5,7 @@ import pyotp
 import os
 import pytz
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 
 app = Flask(__name__)
@@ -33,13 +34,13 @@ login_manager.login_view = 'login'
 # In-memory user storage (for simplicity, replace with a database later)
 users = {
     'test': {
-        'password': 'test',
+        'password': generate_password_hash('test'),
         'email': 'anubhavezhuthassan23@gnu.ac.in'
     },
-    'anubhav': {
-        'password': 'anubhav',
-        'email': 'anubhav.manav147@gmail.com'
-    }
+    # 'anubhav': {
+    #     'password': 'anubhav',
+    #     'email': 'anubhav.manav147@gmail.com'
+    # }
 }
 
 
@@ -66,7 +67,8 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        if username in users and users[username]['password'] == password:
+        # if username in users and users[username]['password'] == password:
+        if username in users and check_password_hash(users[username]['password'], password):
             user = User(username)
             login_user(user)
 
@@ -89,6 +91,32 @@ def login():
         else:
             flash('Invalid username or password', 'danger')
     return render_template('login.html')
+# Signup route
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        email = request.form['email']
+
+        # Check if the user already exists
+        if username in users:
+            flash('Username already exists, please choose another one.', 'warning')
+            return redirect(url_for('signup'))
+
+        # Hash the password
+        hashed_password = generate_password_hash(password)
+
+        # Add the new user to the users dictionary
+        users[username] = {
+            'password': hashed_password,
+            'email': email
+        }
+
+        flash('Signup successful! You can now log in.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('signup.html')
 
 # File upload with error handling
 @app.route('/upload', methods=['GET', 'POST'])
@@ -122,9 +150,9 @@ def verify_otp():
             flash('Invalid OTP', 'danger')
     return render_template('verify_otp.html')
 
-@app.route('/signup')
-def signup():
-    return render_template('signup.html')
+# @app.route('/signup')
+# def signup():
+#     return render_template('signup.html')
 
 # Dashboard for file upload/download
 @app.route('/dashboard')
