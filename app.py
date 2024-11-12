@@ -1,49 +1,50 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from datetime import datetime, timedelta
-import pyotp
-import os
-import pytz
+from flask_mail import Mail, Message
+from flask_migrate import Migrate
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_mail import Mail, Message
-from flask_sqlalchemy import SQLAlchemy
-from db import db  # Import db from db.py
-from authguard_app.models import User  # Import User from models
+from datetime import datetime, timedelta
+import pyotp
+import pytz
+import os
+from db import db
+from authguard_app.models import User  # Import User model
 
 # Initialize the Flask app
 app = Flask(__name__)
 app.secret_key = 'my_secret_key'
 
-# Setup Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-
-# Set a timeout period (15 minutes for session timeout)
-SESSION_TIMEOUT = timedelta(minutes=15)
-
+# Configurations
 # Email configuration
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = 'anubhavezhuthassan23@gnu.ac.in'
 app.config['MAIL_PASSWORD'] = 'Anubhav@Guni$013.748'
-mail = Mail(app)
 
 # File upload configurations
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['MAX_CONTENT_LENGTH'] = 1000000
 
-# DATABASE Configuration
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/authguard.db'
+# Database Configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.instance_path, 'authguard.db')
-
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db.init_app(app)  # Initialize db with the app
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
-# Import models (User, etc.)
-from authguard_app.models import User
+# Setup Flask extensions
+db.init_app(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+mail = Mail(app)
+
+# Session timeout
+SESSION_TIMEOUT = timedelta(minutes=15)
+
+# Create uploads folder if not exists
+if not os.path.exists('uploads'):
+    os.makedirs('uploads')
 
 # User loader for Flask-Login
 @login_manager.user_loader
@@ -91,7 +92,7 @@ def login():
             session['username'] = username
 
             # Send OTP via Email
-            msg = Message('Your OTP Code', sender='your-email@example.com', recipients=[user.email])
+            msg = Message('Your OTP Code', sender='anubhavezhuthassan23@gnu.ac.in', recipients=[user.email])
             msg.body = f'Your OTP code is: {otp_code}'
             mail.send(msg)
 
@@ -208,10 +209,6 @@ def logout():
     session.pop('login_time', None)
     flash("You have been logged out.", "info")
     return redirect(url_for('login'))
-
-# Create uploads folder if not exists
-if not os.path.exists('uploads'):
-    os.makedirs('uploads')
 
 # Run the app
 if __name__ == '__main__':
