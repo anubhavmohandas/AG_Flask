@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory
+from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_mail import Mail, Message
 from flask_migrate import Migrate
@@ -30,14 +31,15 @@ app.config['MAX_CONTENT_LENGTH'] = 1000000
 # Database Configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.instance_path, 'authguard.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+
+db = SQLAlchemy(app)     # Initialize DB here
 migrate = Migrate(app, db)
 
 # Setup Flask extensions
-db.init_app(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 mail = Mail(app)
+
 
 # Session timeout
 SESSION_TIMEOUT = timedelta(minutes=15)
