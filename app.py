@@ -10,7 +10,7 @@ import pyotp
 import pytz
 import os
 from db import db
-from authguard_app.models import User  # Import User model
+from authguard_app.models import User, File  # Import both User and File
 
 # Initialize the Flask app
 app = Flask(__name__)
@@ -22,7 +22,7 @@ app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = 'anubhavezhuthassan23@gnu.ac.in'
-app.config['MAIL_PASSWORD'] = 'Anubhav@Guni$013.748'
+app.config['MAIL_PASSWORD'] = 'passd'
 
 # File upload configurations
 app.config['UPLOAD_FOLDER'] = 'uploads/'
@@ -32,14 +32,14 @@ app.config['MAX_CONTENT_LENGTH'] = 1000000
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.instance_path, 'authguard.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)     # Initialize DB here
+# Initialize db with app (FIXED - no more double initialization)
+db.init_app(app)
 migrate = Migrate(app, db)
 
 # Setup Flask extensions
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 mail = Mail(app)
-
 
 # Session timeout
 SESSION_TIMEOUT = timedelta(minutes=15)
@@ -52,15 +52,6 @@ if not os.path.exists('uploads'):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
-
-# File model for file uploads
-class File(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    filename = db.Column(db.String(120), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    user = db.relationship('User', back_populates='files')
-
-User.files = db.relationship('File', back_populates='user')
 
 # Routes
 
@@ -176,13 +167,14 @@ def verify_otp():
             flash('Invalid OTP', 'danger')
     return render_template('verify_otp.html')
 
-# Dashboard
+# Dashboard (FIXED - only shows user's own files)
 @app.route('/dashboard')
 @login_required
 def dashboard():
     username = session.get('username')
-    files = os.listdir(app.config['UPLOAD_FOLDER'])
-    return render_template('dashboard.html', username=username, files=files)
+    # Get only files uploaded by current user
+    user_files = File.query.filter_by(user_id=current_user.id).all()
+    return render_template('dashboard.html', username=username, files=user_files)
 
 # File download
 @app.route('/download/<filename>')
